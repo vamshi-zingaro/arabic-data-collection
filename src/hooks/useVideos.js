@@ -119,11 +119,14 @@ export function useVideos() {
 
     if (!res.ok) throw new Error(data.error || "Failed to add video");
 
-    // Add the new video to local state and update totals
+    // Add the new video to local state and update totals only if it matches current filter
     if (data.video) {
-      setVideos((prev) => [data.video, ...prev]);
-      setTotalCount((prev) => prev + 1);
-      setTotalDurationSeconds((prev) => prev + (data.video.durationSeconds || 0));
+      const matchesFilter = nameFilter === "All" || data.video.addedBy === nameFilter;
+      if (matchesFilter) {
+        setVideos((prev) => [data.video, ...prev]);
+        setTotalCount((prev) => prev + 1);
+        setTotalDurationSeconds((prev) => prev + (data.video.durationSeconds || 0));
+      }
     }
 
     return { success: true, id: data.id };

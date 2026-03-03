@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Virtuoso } from 'react-virtuoso';
 import { Film, Trash2, Copy, Check, Clock, Download, Loader2, RefreshCw, Users } from 'lucide-react';
@@ -15,10 +15,8 @@ const SOURCE_ICONS = {
   "X/Twitter": FaXTwitter,
 };
 import { getUrlDisplayInfo, formatHoursSummary } from '@/utils/urlUtils';
-import SearchBar from '@/components/SearchBar';
 
 export default function VideoList({ videos, loading, refreshing, loadingMore, hasMore, totalCount, nameFilter, onNameFilterChange, onLoadMore, onRefresh, onDelete }) {
-  const [searchTerm, setSearchTerm] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
 
@@ -32,15 +30,6 @@ export default function VideoList({ videos, loading, refreshing, loadingMore, ha
       toast.error('Failed to copy');
     }
   }, []);
-
-  const filteredVideos = videos.filter((video) => {
-    const search = searchTerm.toLowerCase();
-    return (
-      video.url.toLowerCase().includes(search) ||
-      (video.addedBy && video.addedBy.toLowerCase().includes(search)) ||
-      (video.source && video.source.toLowerCase().includes(search))
-    );
-  });
 
   const handleDelete = async (video) => {
     if (!confirm(`Delete this video?\n${video.url}`)) {
@@ -147,7 +136,6 @@ export default function VideoList({ videos, loading, refreshing, loadingMore, ha
         </div>
       </div>
       <div className="list-search">
-        <SearchBar value={searchTerm} onChange={setSearchTerm} />
         <span className="name-filters">
           {['All', 'Jakeer', 'Sami', 'Afreen'].map((name) => (
             <button
@@ -161,29 +149,23 @@ export default function VideoList({ videos, loading, refreshing, loadingMore, ha
         </span>
       </div>
 
-      {filteredVideos.length === 0 ? (
+      {videos.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon"><Film size={48} strokeWidth={1.5} /></div>
-          {searchTerm ? (
-            <p>No videos match your search</p>
-          ) : (
-            <>
-              <p>No videos added yet</p>
-              <p className="empty-sub">Add your first video using the form</p>
-            </>
-          )}
+          <p>No videos added yet</p>
+          <p className="empty-sub">Add your first video using the form</p>
         </div>
       ) : (
         <Virtuoso
           className="videos-grid"
-          data={filteredVideos}
+          data={videos}
           overscan={200}
           endReached={() => {
-            if (!searchTerm && hasMore && !loadingMore) onLoadMore();
+            if (hasMore && !loadingMore) onLoadMore();
           }}
           components={{
             Footer: () =>
-              !searchTerm && loadingMore ? (
+              loadingMore ? (
                 <div className="load-more-spinner">
                   <Loader2 size={18} className="icon-spin" /> Loading more...
                 </div>
@@ -218,7 +200,7 @@ export default function VideoList({ videos, loading, refreshing, loadingMore, ha
                   {video.dialect && (
                     <span className="dialect-badge">{video.dialect}</span>
                   )}
-                  {video.speakers > 1 && (
+                  {video.speakers >= 1 && (
                     <span className="speakers-badge"><Users size={12} /> {video.speakers}</span>
                   )}
                   <button

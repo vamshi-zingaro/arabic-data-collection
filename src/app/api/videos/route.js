@@ -49,14 +49,18 @@ export async function GET(request) {
 
     const nextCursor = hasMore ? pageDocs[pageDocs.length - 1].id : null;
 
-    // On first page load, return total count and total duration
+    // On first page load, return total count and total duration (filtered if addedBy is set)
     let totalCount = null;
     let totalDurationSeconds = null;
     if (!cursor) {
-      const countSnapshot = await db.collection(COLLECTION).count().get();
+      let countQuery = db.collection(COLLECTION);
+      if (addedBy) countQuery = countQuery.where("addedBy", "==", addedBy);
+      const countSnapshot = await countQuery.count().get();
       totalCount = countSnapshot.data().count;
 
-      const allDocs = await db.collection(COLLECTION).select("durationSeconds", "duration").get();
+      let durQuery = db.collection(COLLECTION).select("durationSeconds", "duration");
+      if (addedBy) durQuery = db.collection(COLLECTION).where("addedBy", "==", addedBy).select("durationSeconds", "duration");
+      const allDocs = await durQuery.get();
       totalDurationSeconds = 0;
       allDocs.forEach((doc) => {
         const d = doc.data();
