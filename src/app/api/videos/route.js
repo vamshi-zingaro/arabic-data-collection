@@ -11,11 +11,15 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get("limit"), 10) || 50, 200);
     const cursor = searchParams.get("cursor");
+    const addedBy = searchParams.get("addedBy");
 
-    let query = db
-      .collection(COLLECTION)
-      .orderBy("addedAt", "desc")
-      .limit(limit + 1); // fetch one extra to check if there are more
+    let query = db.collection(COLLECTION);
+
+    if (addedBy) {
+      query = query.where("addedBy", "==", addedBy);
+    }
+
+    query = query.orderBy("addedAt", "desc").limit(limit + 1);
 
     if (cursor) {
       const cursorDoc = await db.collection(COLLECTION).doc(cursor).get();

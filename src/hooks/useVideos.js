@@ -14,6 +14,7 @@ export function useVideos() {
   const [totalCount, setTotalCount] = useState(0);
   const [totalDurationSeconds, setTotalDurationSeconds] = useState(0);
   const [contributorStats, setContributorStats] = useState({});
+  const [nameFilter, setNameFilter] = useState("All");
   const cursorRef = useRef(null);
 
   const loadStats = useCallback(async (dateFilter = "all", customDate = "") => {
@@ -31,7 +32,9 @@ export function useVideos() {
 
   const loadVideos = useCallback(async () => {
     try {
-      const res = await fetch(`/api/videos?limit=${PAGE_SIZE}`);
+      const params = new URLSearchParams({ limit: PAGE_SIZE });
+      if (nameFilter !== "All") params.set("addedBy", nameFilter);
+      const res = await fetch(`/api/videos?${params}`);
       if (!res.ok) throw new Error("Failed to load videos");
       const data = await res.json();
       setVideos(data.videos);
@@ -46,14 +49,16 @@ export function useVideos() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [nameFilter]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || !cursorRef.current) return;
 
     setLoadingMore(true);
     try {
-      const res = await fetch(`/api/videos?limit=${PAGE_SIZE}&cursor=${cursorRef.current}`);
+      const params = new URLSearchParams({ limit: PAGE_SIZE, cursor: cursorRef.current });
+      if (nameFilter !== "All") params.set("addedBy", nameFilter);
+      const res = await fetch(`/api/videos?${params}`);
       if (!res.ok) throw new Error("Failed to load more videos");
       const data = await res.json();
       setVideos((prev) => [...prev, ...data.videos]);
@@ -64,9 +69,10 @@ export function useVideos() {
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore]);
+  }, [hasMore, loadingMore, nameFilter]);
 
   useEffect(() => {
+    setLoading(true);
     loadVideos();
     loadStats();
   }, [loadVideos, loadStats]);
@@ -151,6 +157,8 @@ export function useVideos() {
     totalCount,
     totalDurationSeconds,
     contributorStats,
+    nameFilter,
+    setNameFilter,
     loadMore,
     loadStats,
     refresh,

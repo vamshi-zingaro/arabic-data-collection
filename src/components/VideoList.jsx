@@ -17,9 +17,8 @@ const SOURCE_ICONS = {
 import { getUrlDisplayInfo, formatHoursSummary } from '@/utils/urlUtils';
 import SearchBar from '@/components/SearchBar';
 
-export default function VideoList({ videos, loading, refreshing, loadingMore, hasMore, totalCount, onLoadMore, onRefresh, onDelete }) {
+export default function VideoList({ videos, loading, refreshing, loadingMore, hasMore, totalCount, nameFilter, onNameFilterChange, onLoadMore, onRefresh, onDelete }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [nameFilter, setNameFilter] = useState('All');
   const [deletingId, setDeletingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
 
@@ -35,7 +34,6 @@ export default function VideoList({ videos, loading, refreshing, loadingMore, ha
   }, []);
 
   const filteredVideos = videos.filter((video) => {
-    if (nameFilter !== 'All' && video.addedBy !== nameFilter) return false;
     const search = searchTerm.toLowerCase();
     return (
       video.url.toLowerCase().includes(search) ||
@@ -155,7 +153,7 @@ export default function VideoList({ videos, loading, refreshing, loadingMore, ha
             <button
               key={name}
               className={`name-filter-btn ${nameFilter === name ? 'active' : ''}`}
-              onClick={() => setNameFilter(name)}
+              onClick={() => onNameFilterChange(name)}
             >
               {name}
             </button>

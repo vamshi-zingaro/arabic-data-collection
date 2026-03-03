@@ -8,7 +8,7 @@ import AddVideoForm from "@/components/AddVideoForm";
 import VideoList from "@/components/VideoList";
 
 export default function VideoApp() {
-  const { videos, loading, refreshing, loadingMore, hasMore, totalCount, totalDurationSeconds, contributorStats, loadMore, loadStats, refresh, error, addVideo, deleteVideo, checkDuplicate } =
+  const { videos, loading, refreshing, loadingMore, hasMore, totalCount, totalDurationSeconds, contributorStats, nameFilter, setNameFilter, loadMore, loadStats, refresh, error, addVideo, deleteVideo, checkDuplicate } =
     useVideos();
 
   if (error) {
@@ -56,7 +56,7 @@ export default function VideoApp() {
         <div className="sidebar">
           <AddVideoForm onAdd={addVideo} onCheckDuplicate={checkDuplicate} totalDurationSeconds={totalDurationSeconds} contributorStats={contributorStats} onLoadStats={loadStats} />
         </div>
-        <VideoList videos={videos} loading={loading} refreshing={refreshing} loadingMore={loadingMore} hasMore={hasMore} totalCount={totalCount} onLoadMore={loadMore} onRefresh={refresh} onDelete={deleteVideo} />
+        <VideoList videos={videos} loading={loading} refreshing={refreshing} loadingMore={loadingMore} hasMore={hasMore} totalCount={totalCount} nameFilter={nameFilter} onNameFilterChange={setNameFilter} onLoadMore={loadMore} onRefresh={refresh} onDelete={deleteVideo} />
       </main>
     </div>
   );
