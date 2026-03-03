@@ -17,8 +17,9 @@ const SOURCE_ICONS = {
 import { getUrlDisplayInfo, formatHoursSummary } from '@/utils/urlUtils';
 import SearchBar from '@/components/SearchBar';
 
-export default function VideoList({ videos, loading, loadingMore, hasMore, totalCount, onLoadMore, onRefresh, onDelete }) {
+export default function VideoList({ videos, loading, refreshing, loadingMore, hasMore, totalCount, onLoadMore, onRefresh, onDelete }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [nameFilter, setNameFilter] = useState('All');
   const [deletingId, setDeletingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
 
@@ -34,6 +35,7 @@ export default function VideoList({ videos, loading, loadingMore, hasMore, total
   }, []);
 
   const filteredVideos = videos.filter((video) => {
+    if (nameFilter !== 'All' && video.addedBy !== nameFilter) return false;
     const search = searchTerm.toLowerCase();
     return (
       video.url.toLowerCase().includes(search) ||
@@ -116,7 +118,7 @@ export default function VideoList({ videos, loading, loadingMore, hasMore, total
     return (
       <div className="video-list">
         <div className="list-header">
-          <h2>Video Collection</h2>
+          <h2>Data Collection</h2>
         </div>
         <div className="videos-grid">
           {[...Array(4)].map((_, i) => (
@@ -134,12 +136,12 @@ export default function VideoList({ videos, loading, loadingMore, hasMore, total
     <div className="video-list">
       <div className="list-header">
         <h2>
-          Video Collection
+          Data Collection
           <span className="video-count">{totalCount}</span>
         </h2>
         <div className="list-header-actions">
-          <button onClick={onRefresh} className="export-btn" title="Refresh list">
-            <RefreshCw size={15} />
+          <button onClick={onRefresh} className="export-btn" title="Refresh list" disabled={refreshing}>
+            <RefreshCw size={15} className={refreshing ? 'icon-spin' : ''} />
           </button>
           <button onClick={exportCSV} className="export-btn" title="Export as CSV" disabled={exporting}>
             {exporting ? <Loader2 size={15} className="icon-spin" /> : <Download size={15} />} {exporting ? 'Exporting...' : 'Export'}
@@ -148,6 +150,17 @@ export default function VideoList({ videos, loading, loadingMore, hasMore, total
       </div>
       <div className="list-search">
         <SearchBar value={searchTerm} onChange={setSearchTerm} />
+        <span className="name-filters">
+          {['All', 'Jakeer', 'Sami', 'Afreen'].map((name) => (
+            <button
+              key={name}
+              className={`name-filter-btn ${nameFilter === name ? 'active' : ''}`}
+              onClick={() => setNameFilter(name)}
+            >
+              {name}
+            </button>
+          ))}
+        </span>
       </div>
 
       {filteredVideos.length === 0 ? (

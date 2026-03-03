@@ -327,8 +327,8 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
       <div className="contributor-stats">
           <div className="stats-total">
             <Clock size={16} />
+            <span className="stats-total-label">Total Duration:</span>
             <span className="stats-total-value">{formatHoursSummary(totalDurationSeconds)}</span>
-            <span className="stats-total-label">total collected</span>
           </div>
 
           <div className="stats-filter-row">

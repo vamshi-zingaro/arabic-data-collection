@@ -7,6 +7,7 @@ const PAGE_SIZE = 50;
 export function useVideos() {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [hasMore, setHasMore] = useState(true);
@@ -70,6 +71,15 @@ export function useVideos() {
     loadStats();
   }, [loadVideos, loadStats]);
 
+  // Poll every 30s for real-time updates across users
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadVideos();
+      loadStats();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [loadVideos, loadStats]);
+
   const checkDuplicate = async (url) => {
     const res = await fetch("/api/videos/check", {
       method: "POST",
@@ -126,9 +136,16 @@ export function useVideos() {
     }
   };
 
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([loadVideos(), loadStats()]);
+    setRefreshing(false);
+  }, [loadVideos, loadStats]);
+
   return {
     videos,
     loading,
+    refreshing,
     loadingMore,
     hasMore,
     totalCount,
@@ -136,7 +153,7 @@ export function useVideos() {
     contributorStats,
     loadMore,
     loadStats,
-    refresh: loadVideos,
+    refresh,
     error,
     addVideo,
     deleteVideo,
