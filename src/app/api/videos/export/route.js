@@ -24,6 +24,7 @@ export async function GET() {
         addedBy: data.addedBy || "",
         duration: durationSeconds > 0 ? formatDuration(durationSeconds) : (data.duration || ""),
         dialect: data.dialect || "",
+        speakers: data.speakers || 1,
         addedAt: data.addedAt?.toDate?.()?.toISOString() || "",
       };
     });

@@ -91,6 +91,7 @@ export function useVideos() {
         source: extra.source || "",
         durationSeconds: extra.durationSeconds || 0,
         dialect: extra.dialect || "Najdi",
+        speakers: extra.speakers || 1,
       }),
     });
 

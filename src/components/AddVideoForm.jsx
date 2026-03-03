@@ -25,6 +25,7 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
   const [hours, setHours] = useState("");
   const [minutes, setMinutes] = useState("");
   const [seconds, setSeconds] = useState("");
+  const [speakers, setSpeakers] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateVideo, setDuplicateVideo] = useState(null);
@@ -103,6 +104,7 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
         source,
         durationSeconds: totalSeconds,
         dialect: "Najdi",
+        speakers: parseInt(speakers, 10) || 1,
       });
 
       if (result.success) {
@@ -127,6 +129,7 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
     setHours("");
     setMinutes("");
     setSeconds("");
+    setSpeakers("");
     setStep(1);
   };
 
@@ -284,6 +287,20 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="speakers">Number of Speakers *</label>
+              <input
+                type="number"
+                id="speakers"
+                min={1}
+                max={99}
+                placeholder="1"
+                value={speakers}
+                onChange={(e) => setSpeakers(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                disabled={isSubmitting}
+              />
             </div>
 
             <div className="form-actions">

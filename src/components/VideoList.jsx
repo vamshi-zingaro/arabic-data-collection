@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Virtuoso } from 'react-virtuoso';
-import { Film, Trash2, Copy, Check, Clock, Download, Loader2, RefreshCw } from 'lucide-react';
+import { Film, Trash2, Copy, Check, Clock, Download, Loader2, RefreshCw, Users } from 'lucide-react';
 import { FaYoutube, FaFacebook, FaInstagram, FaTiktok, FaVimeoV, FaXTwitter } from 'react-icons/fa6';
 
 const SOURCE_ICONS = {
@@ -84,13 +84,14 @@ export default function VideoList({ videos, loading, loadingMore, hasMore, total
         return;
       }
 
-      const headers = ['URL', 'Source', 'Added By', 'Duration', 'Dialect', 'Added At'];
+      const headers = ['URL', 'Source', 'Added By', 'Duration', 'Dialect', 'Speakers', 'Added At'];
       const rows = allVideos.map((v) => [
         `"${(v.url || '').replace(/"/g, '""')}"`,
         v.source || '',
         v.addedBy || '',
         v.duration || '',
         v.dialect || '',
+        v.speakers || 1,
         v.addedAt || '',
       ].join(','));
 
@@ -205,6 +206,9 @@ export default function VideoList({ videos, loading, loadingMore, hasMore, total
                   })()}
                   {video.dialect && (
                     <span className="dialect-badge">{video.dialect}</span>
+                  )}
+                  {video.speakers > 1 && (
+                    <span className="speakers-badge"><Users size={12} /> {video.speakers}</span>
                   )}
                   <button
                     onClick={() => handleCopy(video)}
