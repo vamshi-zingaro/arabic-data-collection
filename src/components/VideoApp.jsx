@@ -8,7 +8,7 @@ import AddVideoForm from "@/components/AddVideoForm";
 import VideoList from "@/components/VideoList";
 
 export default function VideoApp() {
-  const { videos, loading, error, addVideo, deleteVideo, checkDuplicate } =
+  const { videos, loading, loadingMore, hasMore, totalCount, totalDurationSeconds, contributorStats, loadMore, loadStats, refresh, error, addVideo, deleteVideo, checkDuplicate } =
     useVideos();
 
   if (error) {
@@ -40,13 +40,13 @@ export default function VideoApp() {
       />
 
       <header className="app-header">
-        <h1>Najdi Video Tracker</h1>
+        <h1>Najdi Data Tracker</h1>
         <div className="header-stats">
-          <span className="header-count">{videos.length} videos</span>
-          {videos.length > 0 && (
+          <span className="header-count">{totalCount} videos</span>
+          {totalDurationSeconds > 0 && (
             <>
               <span className="header-dot" />
-              <span className="header-count">{formatHoursSummary(videos.reduce((sum, v) => sum + (v.durationSeconds || 0), 0))}</span>
+              <span className="header-count">{formatHoursSummary(totalDurationSeconds)}</span>
             </>
           )}
         </div>
@@ -54,9 +54,9 @@ export default function VideoApp() {
 
       <main className="app-main">
         <div className="sidebar">
-          <AddVideoForm onAdd={addVideo} onCheckDuplicate={checkDuplicate} videos={videos} />
+          <AddVideoForm onAdd={addVideo} onCheckDuplicate={checkDuplicate} totalDurationSeconds={totalDurationSeconds} contributorStats={contributorStats} onLoadStats={loadStats} />
         </div>
-        <VideoList videos={videos} loading={loading} onDelete={deleteVideo} />
+        <VideoList videos={videos} loading={loading} loadingMore={loadingMore} hasMore={hasMore} totalCount={totalCount} onLoadMore={loadMore} onRefresh={refresh} onDelete={deleteVideo} />
       </main>
 
       <footer className="app-footer">

@@ -2,11 +2,22 @@
 
 import { useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { Film, Trash2, Copy, Check, Clock, Download } from 'lucide-react';
-import { getUrlDisplayInfo, formatDuration } from '@/utils/urlUtils';
+import { Virtuoso } from 'react-virtuoso';
+import { Film, Trash2, Copy, Check, Clock, Download, Loader2, RefreshCw } from 'lucide-react';
+import { FaYoutube, FaFacebook, FaInstagram, FaTiktok, FaVimeoV, FaXTwitter } from 'react-icons/fa6';
+
+const SOURCE_ICONS = {
+  YouTube: FaYoutube,
+  Facebook: FaFacebook,
+  Instagram: FaInstagram,
+  TikTok: FaTiktok,
+  Vimeo: FaVimeoV,
+  "X/Twitter": FaXTwitter,
+};
+import { getUrlDisplayInfo, formatHoursSummary } from '@/utils/urlUtils';
 import SearchBar from '@/components/SearchBar';
 
-export default function VideoList({ videos, loading, onDelete }) {
+export default function VideoList({ videos, loading, loadingMore, hasMore, totalCount, onLoadMore, onRefresh, onDelete }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
@@ -58,45 +69,61 @@ export default function VideoList({ videos, loading, onDelete }) {
     });
   };
 
-  const exportCSV = () => {
-    if (videos.length === 0) {
-      toast.error('No videos to export');
-      return;
-    }
+  const [exporting, setExporting] = useState(false);
 
-    const headers = ['URL', 'Source', 'Added By', 'Duration', 'Dialect', 'Added At'];
-    const rows = videos.map((v) => {
-      const date = v.addedAt
-        ? (v.addedAt.toDate ? v.addedAt.toDate() : new Date(v.addedAt)).toISOString()
-        : '';
-      const duration = v.durationSeconds > 0 ? formatDuration(v.durationSeconds) : (v.duration || '');
-      return [
+  const exportCSV = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch('/api/videos/export');
+      if (!res.ok) throw new Error('Failed to fetch videos for export');
+      const data = await res.json();
+      const allVideos = data.videos;
+
+      if (allVideos.length === 0) {
+        toast.error('No videos to export');
+        return;
+      }
+
+      const headers = ['URL', 'Source', 'Added By', 'Duration', 'Dialect', 'Added At'];
+      const rows = allVideos.map((v) => [
         `"${(v.url || '').replace(/"/g, '""')}"`,
         v.source || '',
         v.addedBy || '',
-        duration,
+        v.duration || '',
         v.dialect || '',
-        date,
-      ].join(',');
-    });
+        v.addedAt || '',
+      ].join(','));
 
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `najdi-videos-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${videos.length} videos`);
+      const csv = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `najdi-videos-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+      toast.success(`Exported ${allVideos.length} videos`);
+    } catch (err) {
+      toast.error('Export failed: ' + err.message);
+    } finally {
+      setExporting(false);
+    }
   };
+
 
   if (loading) {
     return (
       <div className="video-list">
-        <div className="loading">
-          <div className="spinner" />
-          <p>Loading videos...</p>
+        <div className="list-header">
+          <h2>Video Collection</h2>
+        </div>
+        <div className="videos-grid">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="video-card skeleton-card">
+              <div className="skeleton-line skeleton-wide" />
+              <div className="skeleton-line skeleton-narrow" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -107,11 +134,18 @@ export default function VideoList({ videos, loading, onDelete }) {
       <div className="list-header">
         <h2>
           Video Collection
-          <span className="video-count">{videos.length}</span>
-          <button onClick={exportCSV} className="export-btn" title="Export as CSV">
-            <Download size={15} /> Export
-          </button>
+          <span className="video-count">{totalCount}</span>
         </h2>
+        <div className="list-header-actions">
+          <button onClick={onRefresh} className="export-btn" title="Refresh list">
+            <RefreshCw size={15} />
+          </button>
+          <button onClick={exportCSV} className="export-btn" title="Export as CSV" disabled={exporting}>
+            {exporting ? <Loader2 size={15} className="icon-spin" /> : <Download size={15} />} {exporting ? 'Exporting...' : 'Export'}
+          </button>
+        </div>
+      </div>
+      <div className="list-search">
         <SearchBar value={searchTerm} onChange={setSearchTerm} />
       </div>
 
@@ -128,16 +162,27 @@ export default function VideoList({ videos, loading, onDelete }) {
           )}
         </div>
       ) : (
-        <div className="videos-grid">
-          {filteredVideos.map((video) => {
+        <Virtuoso
+          className="videos-grid"
+          data={filteredVideos}
+          overscan={200}
+          endReached={() => {
+            if (!searchTerm && hasMore && !loadingMore) onLoadMore();
+          }}
+          components={{
+            Footer: () =>
+              !searchTerm && loadingMore ? (
+                <div className="load-more-spinner">
+                  <Loader2 size={18} className="icon-spin" /> Loading more...
+                </div>
+              ) : null,
+          }}
+          itemContent={(_index, video) => {
             const { platform } = getUrlDisplayInfo(video.url);
             const displaySource = video.source || platform;
             return (
-              <div key={video.id} className="video-card">
+              <div className="video-card">
                 <div className="video-card-row1">
-                  <span className="platform-badge" data-source={displaySource}>
-                    {displaySource}
-                  </span>
                   <a
                     href={video.url}
                     target="_blank"
@@ -147,6 +192,20 @@ export default function VideoList({ videos, loading, onDelete }) {
                   >
                     {video.url}
                   </a>
+                  {(video.durationSeconds > 0 || video.duration) && (
+                    <span className="video-duration"><Clock size={12} /> {video.durationSeconds > 0 ? formatHoursSummary(video.durationSeconds) : video.duration}</span>
+                  )}
+                  {(() => {
+                    const Icon = SOURCE_ICONS[displaySource];
+                    return (
+                      <span className="platform-badge" data-source={displaySource} title={displaySource}>
+                        {Icon ? <Icon size={14} /> : displaySource}
+                      </span>
+                    );
+                  })()}
+                  {video.dialect && (
+                    <span className="dialect-badge">{video.dialect}</span>
+                  )}
                   <button
                     onClick={() => handleCopy(video)}
                     className="copy-btn"
@@ -165,23 +224,14 @@ export default function VideoList({ videos, loading, onDelete }) {
                   </button>
                 </div>
                 <div className="video-card-row2">
-                  <span className="added-by">{video.addedBy}</span>
+                  <span className="added-by" data-user={video.addedBy}>{video.addedBy}</span>
                   <span className="meta-dot" />
                   <span className="added-at">{formatDate(video.addedAt)}</span>
-                  {(video.durationSeconds > 0 || video.duration) && (
-                    <>
-                      <span className="meta-dot" />
-                      <span className="video-duration"><Clock size={12} /> {video.durationSeconds > 0 ? formatDuration(video.durationSeconds) : video.duration}</span>
-                    </>
-                  )}
-                  {video.dialect && (
-                    <span className="dialect-badge">{video.dialect}</span>
-                  )}
                 </div>
               </div>
             );
-          })}
-        </div>
+          }}
+        />
       )}
     </div>
   );

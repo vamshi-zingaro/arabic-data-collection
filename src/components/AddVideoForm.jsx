@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { Plus, Check, CircleCheck, ArrowLeft, Loader2, User, Clock } from "lucide-react";
+import { Plus, Check, CircleCheck, ArrowLeft, Loader2, Clock, BarChart3, Calendar } from "lucide-react";
 import { isValidUrl, getUrlDisplayInfo, formatHoursSummary } from "@/utils/urlUtils";
 import DuplicateWarning from "@/components/DuplicateWarning";
 
@@ -18,17 +18,26 @@ const SOURCES = [
   "Other",
 ];
 
-export default function AddVideoForm({ onAdd, onCheckDuplicate, videos = [] }) {
+export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSeconds = 0, contributorStats = {}, onLoadStats }) {
   const [url, setUrl] = useState("");
   const [addedBy, setAddedBy] = useState("");
   const [source, setSource] = useState("YouTube");
-  const [hours, setHours] = useState(0);
-  const [minutes, setMinutes] = useState(0);
-  const [seconds, setSeconds] = useState(0);
+  const [hours, setHours] = useState("");
+  const [minutes, setMinutes] = useState("");
+  const [seconds, setSeconds] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateVideo, setDuplicateVideo] = useState(null);
   const [step, setStep] = useState(1);
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDate, setCustomDate] = useState("");
+
+  // Reload stats when date filter changes
+  useEffect(() => {
+    if (onLoadStats) {
+      onLoadStats(dateFilter, customDate);
+    }
+  }, [dateFilter, customDate, onLoadStats]);
 
   const handleUrlCheck = async (e) => {
     e.preventDefault();
@@ -81,7 +90,7 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, videos = [] }) {
       return;
     }
 
-    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+    const totalSeconds = (parseInt(hours, 10) || 0) * 3600 + (parseInt(minutes, 10) || 0) * 60 + (parseInt(seconds, 10) || 0);
     if (totalSeconds === 0) {
       toast.error("Please enter the video duration");
       return;
@@ -99,6 +108,8 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, videos = [] }) {
       if (result.success) {
         toast.success("Video added successfully!");
         resetForm();
+        // Refresh stats after adding
+        if (onLoadStats) onLoadStats(dateFilter, customDate);
       } else if (result.isDuplicate) {
         setDuplicateVideo(result.existingVideo);
       }
@@ -113,9 +124,9 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, videos = [] }) {
     setUrl("");
     setAddedBy("");
     setSource("");
-    setHours(0);
-    setMinutes(0);
-    setSeconds(0);
+    setHours("");
+    setMinutes("");
+    setSeconds("");
     setStep(1);
   };
 
@@ -126,6 +137,9 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, videos = [] }) {
   const handleCloseDuplicateWarning = () => {
     setDuplicateVideo(null);
   };
+
+  // Calculate total count from contributor stats for progress bar
+  const totalFiltered = Object.values(contributorStats).reduce((sum, s) => sum + s.count, 0);
 
   return (
     <>
@@ -223,37 +237,49 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, videos = [] }) {
               <label>Duration *</label>
               <div className="duration-picker">
                 <div className="duration-field">
-                  <span className="duration-label">hours</span>
+                  <span className="duration-label">hrs</span>
                   <input
-                    type="number"
-                    min="0"
-                    max="99"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    placeholder="0"
                     value={hours}
-                    onChange={(e) => setHours(Math.max(0, Math.min(99, parseInt(e.target.value) || 0)))}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                      setHours(v);
+                    }}
                     disabled={isSubmitting}
                   />
                 </div>
                 <span className="duration-colon">:</span>
                 <div className="duration-field">
-                  <span className="duration-label">minutes</span>
+                  <span className="duration-label">min</span>
                   <input
-                    type="number"
-                    min="0"
-                    max="59"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    placeholder="00"
                     value={minutes}
-                    onChange={(e) => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                      setMinutes(v);
+                    }}
                     disabled={isSubmitting}
                   />
                 </div>
                 <span className="duration-colon">:</span>
                 <div className="duration-field">
-                  <span className="duration-label">seconds</span>
+                  <span className="duration-label">sec</span>
                   <input
-                    type="number"
-                    min="0"
-                    max="59"
-                    value={String(seconds).padStart(2, "0")}
-                    onChange={(e) => setSeconds(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    placeholder="00"
+                    value={seconds}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                      setSeconds(v);
+                    }}
                     disabled={isSubmitting}
                   />
                 </div>
@@ -284,26 +310,61 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, videos = [] }) {
       <div className="contributor-stats">
           <div className="stats-total">
             <Clock size={16} />
-            <span className="stats-total-value">{formatHoursSummary(videos.reduce((sum, v) => sum + (v.durationSeconds || 0), 0))}</span>
+            <span className="stats-total-value">{formatHoursSummary(totalDurationSeconds)}</span>
             <span className="stats-total-label">total collected</span>
           </div>
-          <h3><User size={15} /> Contributions</h3>
+
+          <div className="stats-filter-row">
+            <h3><Calendar size={15} /> Contributions</h3>
+            <div className="date-filters">
+              {[
+                { key: "today", label: "Today" },
+                { key: "week", label: "Week" },
+                { key: "month", label: "Month" },
+                { key: "all", label: "All" },
+              ].map((f) => (
+                <button
+                  key={f.key}
+                  className={`date-filter-btn ${dateFilter === f.key ? "active" : ""}`}
+                  onClick={() => setDateFilter(f.key)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="custom-date-row">
+            <Calendar size={14} className="custom-date-icon" />
+            <input
+              type="date"
+              value={customDate}
+              onChange={(e) => {
+                setCustomDate(e.target.value);
+                setDateFilter("custom");
+              }}
+              className="custom-date-input"
+            />
+            {dateFilter === "custom" && customDate && (
+              <span className="custom-date-label">
+                {new Date(customDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              </span>
+            )}
+          </div>
+
           <div className="contributor-list">
             {CONTRIBUTORS.map((name) => {
-              const userVideos = videos.filter((v) => v.addedBy === name);
-              const count = userVideos.length;
-              const totalSec = userVideos.reduce((sum, v) => sum + (v.durationSeconds || 0), 0);
+              const stat = contributorStats[name] || { count: 0, totalSeconds: 0 };
               return (
                 <div key={name} className="contributor-row">
+                  <span className="contributor-count"><BarChart3 size={11} /> {stat.count}</span>
                   <span className="contributor-name">{name}</span>
                   <div className="contributor-bar-track">
                     <div
                       className="contributor-bar-fill"
-                      style={{ width: `${videos.length ? (count / videos.length) * 100 : 0}%` }}
+                      style={{ width: `${totalFiltered ? (stat.count / totalFiltered) * 100 : 0}%` }}
                     />
                   </div>
-                  <span className="contributor-count">{count}</span>
-                  <span className="contributor-hours"><Clock size={11} /> {formatHoursSummary(totalSec)}</span>
+                  <span className="contributor-hours"><Clock size={11} /> {formatHoursSummary(stat.totalSeconds)}</span>
                 </div>
               );
             })}

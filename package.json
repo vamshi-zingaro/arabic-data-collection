@@ -15,7 +15,9 @@
     "next": "^15.3.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-hot-toast": "^2.6.0"
+    "react-hot-toast": "^2.6.0",
+    "react-icons": "^5.5.0",
+    "react-virtuoso": "^4.18.3"
   },
   "devDependencies": {
     "eslint": "^9.39.1"

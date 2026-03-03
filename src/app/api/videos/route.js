@@ -1,21 +1,36 @@
 import { NextResponse } from "next/server";
 import { normalizeVideoUrl, createUrlHash, parseDuration } from "@/utils/urlUtils";
 
-const { db } = require("@/lib/firebase-admin");
+import { db } from "@/lib/firebase-admin";
 
 const COLLECTION = "video_data_links";
 
-// GET /api/videos — list all videos
-export async function GET() {
+// GET /api/videos — list videos with cursor-based pagination
+export async function GET(request) {
   try {
-    const snapshot = await db
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get("limit"), 10) || 50, 200);
+    const cursor = searchParams.get("cursor");
+
+    let query = db
       .collection(COLLECTION)
       .orderBy("addedAt", "desc")
-      .get();
+      .limit(limit + 1); // fetch one extra to check if there are more
 
-    const videos = snapshot.docs.map((doc) => {
+    if (cursor) {
+      const cursorDoc = await db.collection(COLLECTION).doc(cursor).get();
+      if (cursorDoc.exists) {
+        query = query.startAfter(cursorDoc);
+      }
+    }
+
+    const snapshot = await query.get();
+    const docs = snapshot.docs;
+    const hasMore = docs.length > limit;
+    const pageDocs = hasMore ? docs.slice(0, limit) : docs;
+
+    const videos = pageDocs.map((doc) => {
       const data = doc.data();
-      // Backward compat: if durationSeconds missing, parse old duration string
       const durationSeconds =
         data.durationSeconds != null
           ? data.durationSeconds
@@ -28,7 +43,24 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ videos });
+    const nextCursor = hasMore ? pageDocs[pageDocs.length - 1].id : null;
+
+    // On first page load, return total count and total duration
+    let totalCount = null;
+    let totalDurationSeconds = null;
+    if (!cursor) {
+      const countSnapshot = await db.collection(COLLECTION).count().get();
+      totalCount = countSnapshot.data().count;
+
+      const allDocs = await db.collection(COLLECTION).select("durationSeconds", "duration").get();
+      totalDurationSeconds = 0;
+      allDocs.forEach((doc) => {
+        const d = doc.data();
+        totalDurationSeconds += d.durationSeconds != null ? d.durationSeconds : parseDuration(d.duration || "");
+      });
+    }
+
+    return NextResponse.json({ videos, nextCursor, hasMore, totalCount, totalDurationSeconds });
   } catch (err) {
     console.error("[videos:list] Error:", err);
     return NextResponse.json(
