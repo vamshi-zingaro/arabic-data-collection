@@ -97,6 +97,11 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
       return;
     }
 
+    if (!speakers || parseInt(speakers, 10) < 1) {
+      toast.error("Please enter the number of speakers");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
