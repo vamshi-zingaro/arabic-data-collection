@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Videos collection - public read/write for simplicity
+    // For production, consider adding authentication
+    match /video_data_links/{videoId} {
+      allow read, write: if true;
+    }
+  }
+}

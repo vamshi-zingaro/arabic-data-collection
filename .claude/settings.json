@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vite build)",
+      "Bash(test -f /home/jakeer/najdi-video-tracker/.env)",
+      "Read(//home/jakeer/**)",
+      "Bash(node scripts/parse-csv.js)",
+      "Bash(node -e \":*)"
+    ]
+  }
+}
