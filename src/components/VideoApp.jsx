@@ -40,7 +40,7 @@ export default function VideoApp() {
       />
 
       <header className="app-header">
-        <h1>Najdi Data Tracker</h1>
+        <h1>Data Tracker</h1>
         <div className="header-stats">
           <span className="header-count">{totalCount} videos</span>
           {totalDurationSeconds > 0 && (
