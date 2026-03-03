@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const { db } = require("@/lib/firebase-admin");
+import { db } from "@/lib/firebase-admin";
 
 const COLLECTION = "video_data_links";
 

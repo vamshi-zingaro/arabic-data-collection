@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Najdi Video Tracker",
+  title: "Najdi Data Tracker",
   description: "Collaborative video tracking for Najdi dialect data collection",
 };
 

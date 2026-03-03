@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { normalizeVideoUrl, createUrlHash } from "@/utils/urlUtils";
 
-const { db } = require("@/lib/firebase-admin");
+import { db } from "@/lib/firebase-admin";
 
 const COLLECTION = "video_data_links";
 
