@@ -1,13 +1,12 @@
 const admin = require("firebase-admin");
-const { readFileSync } = require("fs");
-const { join } = require("path");
 
 if (!admin.apps.length) {
-  const creds = JSON.parse(
-    readFileSync(join(process.cwd(), "firebase_creds.json"), "utf8")
-  );
   admin.initializeApp({
-    credential: admin.credential.cert(creds),
+    credential: admin.credential.cert({
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
   });
 }
 
