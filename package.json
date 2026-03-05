@@ -9,7 +9,6 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@distube/ytdl-core": "^4.16.12",
     "@netlify/plugin-nextjs": "^5.15.8",
     "firebase-admin": "^13.7.0",
     "lucide-react": "^0.576.0",

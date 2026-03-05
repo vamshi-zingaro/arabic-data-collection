@@ -24,16 +24,33 @@ export async function POST(request) {
       return NextResponse.json({ duration: null });
     }
 
-    const ytdl = (await import("@distube/ytdl-core")).default;
-    const info = await ytdl.getBasicInfo(url.trim());
+    // Fetch YouTube page HTML and extract metadata
+    const normalizedUrl = urlObj.hostname.includes("youtu.be")
+      ? `https://www.youtube.com/watch?v=${urlObj.pathname.slice(1).split("/")[0]}`
+      : url.trim();
 
-    const lengthSeconds = parseInt(info.videoDetails?.lengthSeconds, 10);
+    const res = await fetch(normalizedUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+      signal: AbortSignal.timeout(8000),
+    });
 
-    if (!lengthSeconds || isNaN(lengthSeconds) || lengthSeconds <= 0) {
+    if (!res.ok) {
       return NextResponse.json({ duration: null });
     }
 
-    const channel = info.videoDetails?.author?.name || null;
+    const html = await res.text();
+
+    const durationMatch = html.match(/"lengthSeconds":"(\d+)"/);
+    const channelMatch = html.match(/"ownerChannelName":"([^"]+)"/);
+
+    const lengthSeconds = durationMatch ? parseInt(durationMatch[1], 10) : null;
+    const channel = channelMatch ? channelMatch[1] : null;
+
+    if (!lengthSeconds || lengthSeconds <= 0) {
+      return NextResponse.json({ duration: null, channel });
+    }
 
     return NextResponse.json({ duration: lengthSeconds, channel });
   } catch (err) {
