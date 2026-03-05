@@ -224,6 +224,12 @@ export default function VideoList({ videos, loading, refreshing, loadingMore, ha
                   <span className="added-by" data-user={video.addedBy}>{video.addedBy}</span>
                   <span className="meta-dot" />
                   <span className="added-at">{formatDate(video.addedAt)}</span>
+                  {video.channel && (
+                    <>
+                      <span className="meta-dot" />
+                      <span className="channel-name">{video.channel}</span>
+                    </>
+                  )}
                 </div>
               </div>
             );

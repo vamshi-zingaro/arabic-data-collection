@@ -81,7 +81,7 @@ export async function GET(request) {
 // POST /api/videos — add a new video
 export async function POST(request) {
   try {
-    const { url, addedBy, notes, source, durationSeconds, dialect, speakers } =
+    const { url, addedBy, notes, source, durationSeconds, dialect, speakers, channel } =
       await request.json();
 
     if (!url || !url.trim()) {
@@ -124,6 +124,7 @@ export async function POST(request) {
       durationSeconds: parseInt(durationSeconds, 10) || 0,
       dialect: dialect || "Najdi",
       speakers: parseInt(speakers, 10) || 1,
+      channel: (channel || "").trim(),
       addedAt: new Date(),
     };
 

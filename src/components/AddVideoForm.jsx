@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { Plus, Check, CircleCheck, ArrowLeft, Loader2, Clock, BarChart3, Calendar } from "lucide-react";
-import { isValidUrl, getUrlDisplayInfo, formatHoursSummary } from "@/utils/urlUtils";
+import { isValidUrl, getUrlDisplayInfo, formatHoursSummary, extractYouTubeVideoId } from "@/utils/urlUtils";
 import DuplicateWarning from "@/components/DuplicateWarning";
 
 const CONTRIBUTORS = ["Jakeer", "Sami", "Afreen"];
@@ -28,6 +28,9 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
   const [speakers, setSpeakers] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFetchingDuration, setIsFetchingDuration] = useState(false);
+  const [durationAutoFetched, setDurationAutoFetched] = useState(false);
+  const [channel, setChannel] = useState("");
   const [duplicateVideo, setDuplicateVideo] = useState(null);
   const [step, setStep] = useState(1);
   const [dateFilter, setDateFilter] = useState("all");
@@ -39,6 +42,33 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
       onLoadStats(dateFilter, customDate);
     }
   }, [dateFilter, customDate, onLoadStats]);
+
+  const fetchDuration = async (videoUrl) => {
+    setIsFetchingDuration(true);
+    try {
+      const res = await fetch("/api/videos/duration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: videoUrl }),
+      });
+      const data = await res.json();
+      if (data.duration && data.duration > 0) {
+        const h = Math.floor(data.duration / 3600);
+        const m = Math.floor((data.duration % 3600) / 60);
+        const s = data.duration % 60;
+        setHours(h > 0 ? String(h) : "");
+        setMinutes(String(m));
+        setSeconds(String(s));
+        setDurationAutoFetched(true);
+        if (data.channel) setChannel(data.channel);
+        toast.success("Duration auto-detected!");
+      }
+    } catch {
+      // Silent failure — user enters manually
+    } finally {
+      setIsFetchingDuration(false);
+    }
+  };
 
   const handleUrlCheck = async (e) => {
     e.preventDefault();
@@ -52,6 +82,22 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
       toast.error("Please enter a valid URL");
       return;
     }
+
+    // Block playlist and channel URLs
+    try {
+      const urlObj = new URL(url.trim());
+      const isYT = urlObj.hostname.includes("youtube.com") || urlObj.hostname.includes("youtu.be");
+      if (isYT) {
+        if (urlObj.pathname === "/playlist" || urlObj.searchParams.has("list")) {
+          toast.error("Playlist URLs are not supported. Please add individual video URLs.");
+          return;
+        }
+        if (urlObj.pathname.startsWith("/channel/") || urlObj.pathname.startsWith("/@") || urlObj.pathname.startsWith("/c/")) {
+          toast.error("Channel URLs are not supported. Please add individual video URLs.");
+          return;
+        }
+      }
+    } catch { /* ignore parse errors, let it proceed */ }
 
     setIsChecking(true);
 
@@ -71,6 +117,11 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
 
       toast.success("URL verified! Fill in the details.");
       setStep(2);
+
+      // Auto-fetch duration for YouTube URLs
+      if (extractYouTubeVideoId(url)) {
+        fetchDuration(url);
+      }
     } catch (error) {
       toast.error("Failed to check URL: " + error.message);
     } finally {
@@ -110,6 +161,7 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
         durationSeconds: totalSeconds,
         dialect: "Najdi",
         speakers: parseInt(speakers, 10) || 1,
+        channel: channel || "",
       });
 
       if (result.success) {
@@ -135,6 +187,9 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
     setMinutes("");
     setSeconds("");
     setSpeakers("");
+    setChannel("");
+    setDurationAutoFetched(false);
+    setIsFetchingDuration(false);
     setStep(1);
   };
 
@@ -207,6 +262,13 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
               </div>
             </div>
 
+            {channel && (
+              <div className="form-group">
+                <label>Channel</label>
+                <input type="text" value={channel} disabled className="channel-input" />
+              </div>
+            )}
+
             <div className="form-group">
               <label htmlFor="addedBy">Added By *</label>
               <select
@@ -242,7 +304,19 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
             </div>
 
             <div className="form-group">
-              <label>Duration *</label>
+              <label>
+                Duration *
+                {isFetchingDuration && (
+                  <span className="duration-fetching">
+                    <Loader2 size={14} className="icon-spin" /> Auto-detecting...
+                  </span>
+                )}
+                {durationAutoFetched && !isFetchingDuration && (
+                  <span className="duration-auto-badge">
+                    <Check size={12} /> Auto-detected
+                  </span>
+                )}
+              </label>
               <div className="duration-picker">
                 <div className="duration-field">
                   <span className="duration-label">hrs</span>

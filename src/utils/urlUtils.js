@@ -72,6 +72,36 @@ function normalizeVimeoUrl(urlObj) {
 }
 
 /**
+ * Extract YouTube video ID from a URL. Returns null if not a YouTube URL.
+ */
+export function extractYouTubeVideoId(url) {
+  try {
+    const urlObj = new URL(url.trim());
+    if (!urlObj.hostname.includes('youtube.com') && urlObj.hostname !== 'youtu.be') {
+      return null;
+    }
+    if (urlObj.hostname === 'youtu.be') {
+      return urlObj.pathname.slice(1).split('/')[0] || null;
+    }
+    if (urlObj.pathname === '/watch') {
+      return urlObj.searchParams.get('v') || null;
+    }
+    if (urlObj.pathname.startsWith('/shorts/')) {
+      return urlObj.pathname.replace('/shorts/', '').split('/')[0] || null;
+    }
+    if (urlObj.pathname.startsWith('/embed/')) {
+      return urlObj.pathname.replace('/embed/', '').split('/')[0] || null;
+    }
+    if (urlObj.pathname.startsWith('/v/')) {
+      return urlObj.pathname.replace('/v/', '').split('/')[0] || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Create a simple hash from a string for fast lookups
  * Uses a basic hash function suitable for our use case
  */
