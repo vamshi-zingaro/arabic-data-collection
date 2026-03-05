@@ -43,8 +43,62 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
     }
   }, [dateFilter, customDate, onLoadStats]);
 
+  const fetchDurationViaIFrame = (videoId) => {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("timeout")), 12000);
+
+      const loadPlayer = () => {
+        let container = document.getElementById("yt-hidden-player");
+        if (!container) {
+          container = document.createElement("div");
+          container.id = "yt-hidden-player";
+          container.style.cssText = "position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;";
+          document.body.appendChild(container);
+        }
+        container.innerHTML = '<div id="yt-temp-player"></div>';
+
+        const player = new window.YT.Player("yt-temp-player", {
+          videoId,
+          playerVars: { autoplay: 0 },
+          events: {
+            onReady: (event) => {
+              const dur = event.target.getDuration();
+              const videoData = event.target.getVideoData();
+              clearTimeout(timeout);
+              player.destroy();
+              resolve({ duration: dur, channel: videoData?.author || null });
+            },
+            onError: () => {
+              clearTimeout(timeout);
+              player.destroy();
+              reject(new Error("player error"));
+            },
+          },
+        });
+      };
+
+      if (window.YT && window.YT.Player) {
+        loadPlayer();
+      } else {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        const prev = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = () => {
+          if (prev) prev();
+          loadPlayer();
+        };
+        document.head.appendChild(tag);
+      }
+    });
+  };
+
   const fetchDuration = async (videoUrl) => {
+    const videoId = extractYouTubeVideoId(videoUrl);
+    if (!videoId) return;
+
     setIsFetchingDuration(true);
+
+    // Try server-side API first
     try {
       const res = await fetch("/api/videos/duration", {
         method: "POST",
@@ -62,9 +116,29 @@ export default function AddVideoForm({ onAdd, onCheckDuplicate, totalDurationSec
         setDurationAutoFetched(true);
         if (data.channel) setChannel(data.channel);
         toast.success("Duration auto-detected!");
+        setIsFetchingDuration(false);
+        return;
       }
     } catch {
-      // Silent failure — user enters manually
+      // Server failed, try client-side
+    }
+
+    // Fallback: client-side YouTube IFrame Player API
+    try {
+      const result = await fetchDurationViaIFrame(videoId);
+      if (result.duration && result.duration > 0) {
+        const h = Math.floor(result.duration / 3600);
+        const m = Math.floor((result.duration % 3600) / 60);
+        const s = Math.round(result.duration % 60);
+        setHours(h > 0 ? String(h) : "");
+        setMinutes(String(m));
+        setSeconds(String(s));
+        setDurationAutoFetched(true);
+        if (result.channel) setChannel(result.channel);
+        toast.success("Duration auto-detected!");
+      }
+    } catch {
+      // Both failed — user enters manually
     } finally {
       setIsFetchingDuration(false);
     }
